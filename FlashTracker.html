@@ -10,7 +10,7 @@
   var c = document.createElement('canvas');
   c.width = 180; c.height = 180;
   var ctx = c.getContext('2d');
-  ctx.fillStyle = '#010A13';
+  ctx.fillStyle = '#0D1B2A';
   ctx.fillRect(0, 0, 180, 180);
   ctx.font = '120px serif';
   ctx.textAlign = 'center';
@@ -25,10 +25,10 @@
     --gold: #C8AA6E;
     --gold-light: #F0E6D3;
     --gold-dark: #785A28;
-    --bg: #010A13;
-    --panel: #0A1628;
-    --panel2: #0D1B2E;
-    --border: #1E2D3E;
+    --bg: #0D1B2A;
+    --panel: #162436;
+    --panel2: #1A2D42;
+    --border: #2A3E54;
     --red: #C34B4B;
     --green: #3D9970;
     --white: #F0E6D3;
@@ -52,7 +52,7 @@
     text-align: center;
     margin-bottom: 28px;
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
   }
   .header h1 {
     font-size: 1.05rem;
@@ -70,7 +70,7 @@
 
   .lanes-grid {
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -96,7 +96,7 @@
   .lane-top {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .lane-label {
@@ -111,32 +111,30 @@
   .time-fields {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 1px;
   }
+  /* text input으로 변경 — 2자리 제한 */
   .t-input {
     background: var(--panel2);
     border: 1px solid var(--border);
     color: var(--gold-light);
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.0rem;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
-    width: 42px;
+    width: 34px;
     text-align: center;
     border-radius: 3px;
     padding: 5px 2px;
     outline: none;
     transition: border-color 0.15s;
-    -moz-appearance: textfield;
   }
-  .t-input::-webkit-inner-spin-button,
-  .t-input::-webkit-outer-spin-button { -webkit-appearance: none; }
   .t-input:focus { border-color: var(--gold); }
   .t-colon {
     font-size: 1rem;
     font-weight: 900;
     color: #7A9AB0;
-    padding: 0 1px;
+    padding: 0 2px;
   }
 
   .confirm-btn {
@@ -200,6 +198,7 @@
     font-weight: 700;
     transition: all 0.15s;
     letter-spacing: 0.03em;
+    white-space: nowrap;
   }
   .rune-pill:hover {
     border-color: #4A7AB0;
@@ -245,10 +244,9 @@
     background: linear-gradient(90deg, var(--gold-dark), var(--gold));
   }
 
-  /* ── 미리보기: 항상 전체 라인 표시 ── */
   .copy-section {
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
     margin-top: 10px;
   }
   .copy-preview {
@@ -269,7 +267,7 @@
 
   .reset-btn {
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
     margin-top: 6px;
     background: transparent;
     border: 1px solid #3A5068;
@@ -309,7 +307,8 @@ const LANES = [
   { id: 'adc',    name: '원딜', short: 'ad'  },
   { id: 'sup',    name: '서폿', short: 'sup' },
 ];
-const CD = { base: 300, boots: 267, insight: 254, both: 230 };
+// 쿨타임(초): 기본300 / 장화272 / 통찰254 / 둘다234
+const CD = { base: 300, boots: 272, insight: 254, both: 234 };
 
 const state = {};
 LANES.forEach(l => {
@@ -325,15 +324,23 @@ function getCd(id) {
 }
 
 function fmt(sec) {
-  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
   const s = (sec % 60).toString().padStart(2, '0');
+  if (h > 0) return `${h}:${m}:${s}`;
   return `${m}:${s}`;
 }
 
+// 입력값을 초로 변환 (시:분:초)
+function getInputSec(laneId) {
+  const hVal = parseInt(document.getElementById(`hr-${laneId}`).value) || 0;
+  const mVal = parseInt(document.getElementById(`min-${laneId}`).value) || 0;
+  const sVal = Math.min(59, parseInt(document.getElementById(`sec-${laneId}`).value) || 0);
+  return hVal * 3600 + mVal * 60 + sVal;
+}
+
 function applyFlash(laneId) {
-  const m = parseInt(document.getElementById(`min-${laneId}`).value) || 0;
-  const s = Math.min(59, parseInt(document.getElementById(`sec-${laneId}`).value) || 0);
-  const usedAt = m * 60 + s;
+  const usedAt = getInputSec(laneId);
   const cd = getCd(laneId);
   const ls = state[laneId];
   ls.usedAt = usedAt;
@@ -347,6 +354,7 @@ function cancelFlash(laneId) {
   ls.usedAt = null;
   ls.readyAt = null;
   ls.status = 'idle';
+  document.getElementById(`hr-${laneId}`).value = '';
   document.getElementById(`min-${laneId}`).value = '';
   document.getElementById(`sec-${laneId}`).value = '';
   renderAll();
@@ -359,10 +367,12 @@ function resetAll() {
     state[l.id].usedAt = null;
     state[l.id].readyAt = null;
     state[l.id].status = 'idle';
+    document.getElementById(`hr-${l.id}`).value = '';
     document.getElementById(`min-${l.id}`).value = '';
     document.getElementById(`sec-${l.id}`).value = '';
     document.getElementById(`pill-${l.id}-boots`).classList.remove('on');
     document.getElementById(`pill-${l.id}-insight`).classList.remove('on');
+    updatePillLabels(l.id);
   });
   renderAll();
 }
@@ -374,7 +384,23 @@ function toggleRune(laneId, rune) {
   if (ls.usedAt !== null) {
     ls.readyAt = ls.usedAt + getCd(laneId);
   }
+  updatePillLabels(laneId);
   renderAll();
+}
+
+// 장화/통찰 버튼에 적용 CD 초 표시
+function updatePillLabels(laneId) {
+  const s = state[laneId];
+
+  // 장화: 단독 272초, 통찰도 켜져있으면 둘다 234초
+  const bootsCd  = s.insight ? CD.both : CD.boots;
+  const insightCd = s.boots  ? CD.both : CD.insight;
+
+  const bBtn = document.getElementById(`pill-${laneId}-boots`);
+  const iBtn = document.getElementById(`pill-${laneId}-insight`);
+
+  bBtn.textContent  = s.boots  ? `장화 ${bootsCd}초`   : `장화 ${CD.boots}초`;
+  iBtn.textContent  = s.insight ? `통찰 ${insightCd}초` : `통찰 ${CD.insight}초`;
 }
 
 function renderAll() {
@@ -397,14 +423,14 @@ function renderLane(lane) {
     resultMain.className = 'result-main';
     resultMain.textContent = '–';
     resultSub.className = 'result-sub';
-    resultSub.textContent = `CD ${fmt(cd)}`;
+    resultSub.textContent = `CD ${cd}초`;
     bar.style.display = 'none';
     cancelBtn.classList.remove('visible');
   } else {
     resultMain.className = 'result-main cooling';
     resultMain.textContent = fmt(ls.readyAt) + ' 완료';
     resultSub.className = 'result-sub active';
-    resultSub.textContent = `${fmt(ls.usedAt)} 사용 · CD ${fmt(cd)}`;
+    resultSub.textContent = `${fmt(ls.usedAt)} 사용 · CD ${cd}초`;
     bar.style.display = 'block';
     cancelBtn.classList.add('visible');
   }
@@ -412,7 +438,6 @@ function renderLane(lane) {
 
 function renderCopy() {
   const preview = document.getElementById('copyPreview');
-  // 항상 5개 라인 전부 표시 — 입력된 건 밝게, 미입력은 --:-- 어둡게
   preview.innerHTML = LANES.map(l => {
     const ls = state[l.id];
     if (ls.status !== 'idle') {
@@ -421,6 +446,14 @@ function renderCopy() {
       return `<span class="slot-dim">${l.short} --:--</span>`;
     }
   }).join(' ');
+}
+
+// 숫자만, 최대 2자리 입력 제한
+function limitInput(el, max) {
+  el.addEventListener('input', () => {
+    el.value = el.value.replace(/\D/g, '').slice(0, 2);
+    if (max !== null && parseInt(el.value) > max) el.value = String(max).padStart(2,'0');
+  });
 }
 
 function buildLanes() {
@@ -434,20 +467,22 @@ function buildLanes() {
       <div class="lane-top">
         <div class="lane-label">${lane.name}</div>
         <div class="time-fields">
-          <input class="t-input" id="min-${lane.id}" type="number" min="0" max="99" placeholder="00">
+          <input class="t-input" id="hr-${lane.id}"  inputmode="numeric" placeholder="00" maxlength="2">
           <span class="t-colon">:</span>
-          <input class="t-input" id="sec-${lane.id}" type="number" min="0" max="59" placeholder="00">
+          <input class="t-input" id="min-${lane.id}" inputmode="numeric" placeholder="00" maxlength="2">
+          <span class="t-colon">:</span>
+          <input class="t-input" id="sec-${lane.id}" inputmode="numeric" placeholder="00" maxlength="2">
         </div>
         <button class="confirm-btn" onclick="applyFlash('${lane.id}')">입력</button>
         <div class="lane-result">
           <div class="result-main" id="result-main-${lane.id}">–</div>
-          <div class="result-sub" id="result-sub-${lane.id}">CD ${fmt(CD.base)}</div>
+          <div class="result-sub" id="result-sub-${lane.id}">CD ${CD.base}초</div>
         </div>
       </div>
       <div class="lane-bottom">
         <div class="rune-pills">
-          <button class="rune-pill" id="pill-${lane.id}-boots" onclick="toggleRune('${lane.id}','boots')">장화</button>
-          <button class="rune-pill" id="pill-${lane.id}-insight" onclick="toggleRune('${lane.id}','insight')">통찰</button>
+          <button class="rune-pill" id="pill-${lane.id}-boots"   onclick="toggleRune('${lane.id}','boots')">장화 ${CD.boots}초</button>
+          <button class="rune-pill" id="pill-${lane.id}-insight" onclick="toggleRune('${lane.id}','insight')">통찰 ${CD.insight}초</button>
         </div>
         <button class="cancel-btn" id="cancel-${lane.id}" onclick="cancelFlash('${lane.id}')">취소</button>
       </div>
@@ -459,12 +494,27 @@ function buildLanes() {
     grid.appendChild(card);
 
     setTimeout(() => {
-      document.getElementById(`min-${lane.id}`).addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById(`sec-${lane.id}`).focus();
+      const hrEl  = document.getElementById(`hr-${lane.id}`);
+      const minEl = document.getElementById(`min-${lane.id}`);
+      const secEl = document.getElementById(`sec-${lane.id}`);
+
+      limitInput(hrEl,  99);
+      limitInput(minEl, 59);
+      limitInput(secEl, 59);
+
+      hrEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') minEl.focus();
       });
-      document.getElementById(`sec-${lane.id}`).addEventListener('keydown', e => {
+      minEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') secEl.focus();
+      });
+      secEl.addEventListener('keydown', e => {
         if (e.key === 'Enter') applyFlash(lane.id);
       });
+
+      // 2자리 입력 시 다음 칸으로 자동 이동
+      hrEl.addEventListener('input', () => { if (hrEl.value.length === 2) minEl.focus(); });
+      minEl.addEventListener('input', () => { if (minEl.value.length === 2) secEl.focus(); });
     }, 0);
   });
 }
