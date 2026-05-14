@@ -3,7 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>점멸 쿨타임 트래커</title>
+<title>Flash Tracker</title>
+<link id="apple-touch-icon" rel="apple-touch-icon">
+<script>
+(function(){
+  var c = document.createElement('canvas');
+  c.width = 180; c.height = 180;
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = '#010A13';
+  ctx.fillRect(0, 0, 180, 180);
+  ctx.font = '120px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('\u26A1', 90, 95);
+  document.getElementById('apple-touch-icon').href = c.toDataURL('image/png');
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -124,7 +139,6 @@
     padding: 0 1px;
   }
 
-  /* ── 입력 버튼: 남색 배경 + 흰 글씨로 가독성 개선 ── */
   .confirm-btn {
     background: linear-gradient(135deg, #1E4A7A, #163560);
     border: 1px solid #4A7AB0;
@@ -174,7 +188,6 @@
 
   .rune-pills { display: flex; gap: 4px; }
 
-  /* ── 룬 필: 미선택시 어둡게, 선택시 남색 배경 + 밝은 글씨 ── */
   .rune-pill {
     background: transparent;
     border: 1px solid var(--border);
@@ -232,6 +245,7 @@
     background: linear-gradient(90deg, var(--gold-dark), var(--gold));
   }
 
+  /* ── 미리보기: 항상 전체 라인 표시 ── */
   .copy-section {
     width: 100%;
     max-width: 520px;
@@ -240,53 +254,18 @@
   .copy-preview {
     background: var(--panel2);
     border: 1px solid var(--border);
-    border-radius: 3px 3px 0 0;
-    padding: 8px 12px;
-    font-size: 0.76rem;
-    color: var(--gold-light);
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.04em;
-    min-height: 34px;
-    line-height: 1.5;
-  }
-  .copy-preview.empty { color: #2A3A4A; font-style: italic; font-size: 0.7rem; }
-
-  /* ── 전체복사 버튼: 남색 배경 + 흰 글씨 ── */
-  .copy-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #1E4A7A, #163560);
-    border: 1px solid #4A7AB0;
-    border-top: none;
-    color: #FFFFFF;
-    font-family: 'Noto Sans KR', sans-serif;
+    border-radius: 3px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
     font-weight: 700;
-    font-size: 0.8rem;
-    padding: 10px;
-    border-radius: 0 0 3px 3px;
-    cursor: pointer;
-    letter-spacing: 0.08em;
-    transition: all 0.15s;
-    text-transform: uppercase;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    line-height: 1.6;
+    user-select: all;
+    cursor: text;
   }
-  .copy-btn:hover {
-    background: linear-gradient(135deg, #2A5E9A, #1E4A7A);
-    border-color: #6AACF0;
-    color: #FFFFFF;
-  }
-  .copy-btn:disabled {
-    background: var(--panel2);
-    border-color: var(--border);
-    color: #2A3A4A;
-    cursor: not-allowed;
-    text-shadow: none;
-  }
-  .copy-btn.done {
-    background: linear-gradient(135deg, #1A4A2A, #0D2A1A);
-    border-color: var(--green);
-    color: var(--green);
-    text-shadow: none;
-  }
+  .slot-dim    { color: #2A3A4A; }
+  .slot-active { color: var(--gold-light); }
 
   .reset-btn {
     width: 100%;
@@ -306,43 +285,21 @@
     transition: all 0.15s;
   }
   .reset-btn:hover { color: var(--white); border-color: #5A7087; }
-
-  .toast {
-    position: fixed;
-    bottom: 26px;
-    left: 50%;
-    transform: translateX(-50%) translateY(14px);
-    background: var(--green);
-    color: #010A13;
-    font-size: 0.76rem;
-    font-weight: 700;
-    padding: 8px 18px;
-    border-radius: 3px;
-    opacity: 0;
-    transition: all 0.2s;
-    pointer-events: none;
-    z-index: 999;
-    letter-spacing: 0.06em;
-  }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>Flash Cooldown Tracker</h1>
+  <h1>Flash Tracker</h1>
   <p>점멸 쿨타임 트래커</p>
 </div>
 
 <div class="lanes-grid" id="lanesGrid"></div>
 
 <div class="copy-section">
-  <div class="copy-preview empty" id="copyPreview">점멸 시간을 입력하면 여기에 표시됩니다</div>
-  <button class="copy-btn" id="copyBtn" onclick="copyAll()" disabled>전체 복사</button>
+  <div class="copy-preview" id="copyPreview"></div>
 </div>
 <button class="reset-btn" onclick="resetAll()">초기화</button>
-
-<div class="toast" id="toast">클립보드에 복사됨</div>
 
 <script>
 const LANES = [
@@ -455,38 +412,15 @@ function renderLane(lane) {
 
 function renderCopy() {
   const preview = document.getElementById('copyPreview');
-  const btn = document.getElementById('copyBtn');
-  const parts = LANES
-    .filter(l => state[l.id].status !== 'idle')
-    .map(l => `${l.short} ${fmt(state[l.id].readyAt)}`);
-  const text = parts.join(' ');
-  if (text) {
-    preview.textContent = text;
-    preview.classList.remove('empty');
-    btn.disabled = false;
-  } else {
-    preview.textContent = '점멸 시간을 입력하면 여기에 표시됩니다';
-    preview.classList.add('empty');
-    btn.disabled = true;
-  }
-}
-
-function copyAll() {
-  const parts = LANES
-    .filter(l => state[l.id].status !== 'idle')
-    .map(l => `${l.short} ${fmt(state[l.id].readyAt)}`);
-  navigator.clipboard.writeText(parts.join(' ')).then(() => {
-    const btn = document.getElementById('copyBtn');
-    btn.textContent = '복사 완료';
-    btn.classList.add('done');
-    const t = document.getElementById('toast');
-    t.classList.add('show');
-    setTimeout(() => {
-      btn.textContent = '전체 복사';
-      btn.classList.remove('done');
-      t.classList.remove('show');
-    }, 2000);
-  });
+  // 항상 5개 라인 전부 표시 — 입력된 건 밝게, 미입력은 --:-- 어둡게
+  preview.innerHTML = LANES.map(l => {
+    const ls = state[l.id];
+    if (ls.status !== 'idle') {
+      return `<span class="slot-active">${l.short} ${fmt(ls.readyAt)}</span>`;
+    } else {
+      return `<span class="slot-dim">${l.short} --:--</span>`;
+    }
+  }).join(' ');
 }
 
 function buildLanes() {
