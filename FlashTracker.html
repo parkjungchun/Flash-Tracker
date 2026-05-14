@@ -312,7 +312,7 @@ const CD = { base: 300, boots: 272, insight: 254, both: 234 };
 
 const state = {};
 LANES.forEach(l => {
-  state[l.id] = { boots: false, insight: false, usedAt: null, readyAt: null, status: 'idle' };
+  state[l.id] = { boots: false, insight: false, usedAt: null, readyAt: null, status: 'idle', realStartAt: null, cdSec: 0 };
 });
 
 function getCd(id) {
@@ -346,6 +346,8 @@ function applyFlash(laneId) {
   ls.usedAt = usedAt;
   ls.readyAt = usedAt + cd;
   ls.status = 'cooling';
+  ls.realStartAt = Date.now();
+  ls.cdSec = cd;
   renderAll();
 }
 
@@ -354,6 +356,8 @@ function cancelFlash(laneId) {
   ls.usedAt = null;
   ls.readyAt = null;
   ls.status = 'idle';
+  ls.realStartAt = null;
+  ls.cdSec = 0;
   document.getElementById(`hr-${laneId}`).value = '';
   document.getElementById(`min-${laneId}`).value = '';
   document.getElementById(`sec-${laneId}`).value = '';
@@ -367,6 +371,8 @@ function resetAll() {
     state[l.id].usedAt = null;
     state[l.id].readyAt = null;
     state[l.id].status = 'idle';
+    state[l.id].realStartAt = null;
+    state[l.id].cdSec = 0;
     document.getElementById(`hr-${l.id}`).value = '';
     document.getElementById(`min-${l.id}`).value = '';
     document.getElementById(`sec-${l.id}`).value = '';
@@ -417,6 +423,35 @@ function renderLane(lane) {
   const cancelBtn  = document.getElementById(`cancel-${lane.id}`);
   const cd = getCd(lane.id);
 
+  // 실제 경과시간으로 남은 시간 계산 및 자동 초기화
+  if (ls.status === 'cooling' && ls.realStartAt !== null) {
+    const elapsed = Math.floor((Date.now() - ls.realStartAt) / 1000);
+    const remaining = ls.cdSec - elapsed;
+    if (remaining <= 0) {
+      // 쿨타임 완료 → 자동 초기화
+      ls.usedAt = null;
+      ls.readyAt = null;
+      ls.status = 'idle';
+      ls.realStartAt = null;
+      ls.cdSec = 0;
+      document.getElementById(`hr-${lane.id}`).value = '';
+      document.getElementById(`min-${lane.id}`).value = '';
+      document.getElementById(`sec-${lane.id}`).value = '';
+    } else {
+      // 진행 중: 남은 시간 & 프로그레스바 업데이트
+      card.className = 'lane-card cooling';
+      resultMain.className = 'result-main cooling';
+      resultMain.textContent = fmt(remaining) + ' 남음';
+      resultSub.className = 'result-sub active';
+      resultSub.textContent = `${fmt(ls.usedAt)} 사용 · CD ${ls.cdSec}초`;
+      bar.style.display = 'block';
+      const pct = ((ls.cdSec - remaining) / ls.cdSec * 100).toFixed(1);
+      bar.querySelector('.progress-bar-fill').style.width = pct + '%';
+      cancelBtn.classList.add('visible');
+      return;
+    }
+  }
+
   card.className = 'lane-card' + (ls.status === 'idle' ? '' : ' ' + ls.status);
 
   if (ls.status === 'idle') {
@@ -425,14 +460,8 @@ function renderLane(lane) {
     resultSub.className = 'result-sub';
     resultSub.textContent = `CD ${cd}초`;
     bar.style.display = 'none';
+    bar.querySelector('.progress-bar-fill').style.width = '100%';
     cancelBtn.classList.remove('visible');
-  } else {
-    resultMain.className = 'result-main cooling';
-    resultMain.textContent = fmt(ls.readyAt) + ' 완료';
-    resultSub.className = 'result-sub active';
-    resultSub.textContent = `${fmt(ls.usedAt)} 사용 · CD ${cd}초`;
-    bar.style.display = 'block';
-    cancelBtn.classList.add('visible');
   }
 }
 
@@ -440,8 +469,10 @@ function renderCopy() {
   const preview = document.getElementById('copyPreview');
   preview.innerHTML = LANES.map(l => {
     const ls = state[l.id];
-    if (ls.status !== 'idle') {
-      return `<span class="slot-active">${l.short} ${fmt(ls.readyAt)}</span>`;
+    if (ls.status !== 'idle' && ls.realStartAt !== null) {
+      const elapsed = Math.floor((Date.now() - ls.realStartAt) / 1000);
+      const remaining = Math.max(0, ls.cdSec - elapsed);
+      return `<span class="slot-active">${l.short} ${fmt(remaining)}</span>`;
     } else {
       return `<span class="slot-dim">${l.short} --:--</span>`;
     }
@@ -521,6 +552,9 @@ function buildLanes() {
 
 buildLanes();
 renderAll();
+
+// 1초마다 카운트다운 갱신
+setInterval(() => { renderAll(); }, 1000);
 </script>
 
 </body>
