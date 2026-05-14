@@ -307,19 +307,31 @@ const LANES = [
   { id: 'adc',    name: '원딜', short: 'ad'  },
   { id: 'sup',    name: '서폿', short: 'sup' },
 ];
-// 쿨타임(초): 기본300 / 장화272 / 통찰254 / 둘다234
-const CD = { base: 300, boots: 272, insight: 254, both: 234 };
+// 쿨타임 계산: 300*100/(100+주문가속합)
+// 장화:10, 업글장화:20, 우통:18
+const SA = { boots: 10, upgBoots: 20, utong: 18 };
+function calcCd(saTotal) { return Math.floor(300 * 100 / (100 + saTotal)); }
+const CD = {
+  base:     300,
+  boots:    calcCd(SA.boots),                        // 272
+  upgBoots: calcCd(SA.upgBoots),                     // 250
+  utong:    calcCd(SA.utong),                        // 254
+  both:     calcCd(SA.boots + SA.utong),             // 234
+  upgBoth:  calcCd(SA.upgBoots + SA.utong),          // 217
+};
 
 const state = {};
 LANES.forEach(l => {
-  state[l.id] = { boots: false, insight: false, usedAt: null, readyAt: null, status: 'idle', realStartAt: null, cdSec: 0 };
+  state[l.id] = { boots: false, upgBoots: false, utong: false, usedAt: null, readyAt: null, status: 'idle', realStartAt: null, cdSec: 0 };
 });
 
 function getCd(id) {
   const s = state[id];
-  if (s.boots && s.insight) return CD.both;
+  if (s.upgBoots && s.utong) return CD.upgBoth;
+  if (s.upgBoots) return CD.upgBoots;
+  if (s.boots && s.utong) return CD.both;
   if (s.boots) return CD.boots;
-  if (s.insight) return CD.insight;
+  if (s.utong) return CD.utong;
   return CD.base;
 }
 
@@ -367,7 +379,8 @@ function cancelFlash(laneId) {
 function resetAll() {
   LANES.forEach(l => {
     state[l.id].boots = false;
-    state[l.id].insight = false;
+    state[l.id].upgBoots = false;
+    state[l.id].utong = false;
     state[l.id].usedAt = null;
     state[l.id].readyAt = null;
     state[l.id].status = 'idle';
@@ -377,16 +390,26 @@ function resetAll() {
     document.getElementById(`min-${l.id}`).value = '';
     document.getElementById(`sec-${l.id}`).value = '';
     document.getElementById(`pill-${l.id}-boots`).classList.remove('on');
-    document.getElementById(`pill-${l.id}-insight`).classList.remove('on');
+    document.getElementById(`pill-${l.id}-utong`).classList.remove('on');
+    const uBtn = document.getElementById(`pill-${l.id}-upgBoots`);
+    if (uBtn) uBtn.classList.remove('on');
     updatePillLabels(l.id);
   });
   renderAll();
 }
 
 function toggleRune(laneId, rune) {
-  state[laneId][rune] = !state[laneId][rune];
-  document.getElementById(`pill-${laneId}-${rune}`).classList.toggle('on', state[laneId][rune]);
   const ls = state[laneId];
+  if (rune === 'boots' && ls.upgBoots) {
+    ls.upgBoots = false;
+    document.getElementById(`pill-${laneId}-upgBoots`).classList.remove('on');
+  }
+  if (rune === 'upgBoots' && ls.boots) {
+    ls.boots = false;
+    document.getElementById(`pill-${laneId}-boots`).classList.remove('on');
+  }
+  ls[rune] = !ls[rune];
+  document.getElementById(`pill-${laneId}-${rune}`).classList.toggle('on', ls[rune]);
   if (ls.usedAt !== null) {
     ls.readyAt = ls.usedAt + getCd(laneId);
   }
@@ -394,19 +417,23 @@ function toggleRune(laneId, rune) {
   renderAll();
 }
 
-// 장화/통찰 버튼에 적용 CD 초 표시
 function updatePillLabels(laneId) {
   const s = state[laneId];
 
-  // 장화: 단독 272초, 통찰도 켜져있으면 둘다 234초
-  const bootsCd  = s.insight ? CD.both : CD.boots;
-  const insightCd = s.boots  ? CD.both : CD.insight;
+  const bootsCd   = s.utong ? CD.both    : CD.boots;
+  const utongCd   = s.upgBoots ? CD.upgBoth : (s.boots ? CD.both : CD.utong);
 
   const bBtn = document.getElementById(`pill-${laneId}-boots`);
-  const iBtn = document.getElementById(`pill-${laneId}-insight`);
+  const iBtn = document.getElementById(`pill-${laneId}-utong`);
 
-  bBtn.textContent  = s.boots  ? `장화 ${bootsCd}초`   : `장화 ${CD.boots}초`;
-  iBtn.textContent  = s.insight ? `통찰 ${insightCd}초` : `통찰 ${CD.insight}초`;
+  bBtn.textContent = s.boots ? `장화 ${bootsCd}초` : `장화 ${CD.boots}초`;
+  iBtn.textContent = s.utong ? `우통 ${utongCd}초` : `우통 ${CD.utong}초`;
+
+  const uBtn = document.getElementById(`pill-${laneId}-upgBoots`);
+  if (uBtn) {
+    const upgCd = s.utong ? CD.upgBoth : CD.upgBoots;
+    uBtn.textContent = s.upgBoots ? `업글장화 ${upgCd}초` : `업글장화 ${CD.upgBoots}초`;
+  }
 }
 
 function renderAll() {
@@ -511,7 +538,8 @@ function buildLanes() {
       <div class="lane-bottom">
         <div class="rune-pills">
           <button class="rune-pill" id="pill-${lane.id}-boots"   onclick="toggleRune('${lane.id}','boots')">장화 ${CD.boots}초</button>
-          <button class="rune-pill" id="pill-${lane.id}-insight" onclick="toggleRune('${lane.id}','insight')">통찰 ${CD.insight}초</button>
+          ${lane.id === 'mid' ? `<button class="rune-pill" id="pill-${lane.id}-upgBoots" onclick="toggleRune('${lane.id}','upgBoots')">업글장화 ${CD.upgBoots}초</button>` : ''}
+          <button class="rune-pill" id="pill-${lane.id}-utong" onclick="toggleRune('${lane.id}','utong')">우통 ${CD.utong}초</button>
         </div>
         <button class="cancel-btn" id="cancel-${lane.id}" onclick="cancelFlash('${lane.id}')">취소</button>
       </div>
