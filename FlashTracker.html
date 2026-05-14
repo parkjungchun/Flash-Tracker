@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>점멸 쿨타임 트래커</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C8AA6E;
+    --gold-light: #F0E6D3;
+    --gold-dark: #785A28;
+    --bg: #010A13;
+    --panel: #0A1628;
+    --panel2: #0D1B2E;
+    --border: #1E2D3E;
+    --red: #C34B4B;
+    --green: #3D9970;
+    --white: #F0E6D3;
+    --ready: #00E5FF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--white);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 12px 48px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+    width: 100%;
+    max-width: 520px;
+  }
+  .header h1 {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .header p {
+    font-size: 0.68rem;
+    color: #3A5068;
+    margin-top: 3px;
+    letter-spacing: 0.06em;
+  }
+
+  .lanes-grid {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .lane-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 11px 14px;
+    transition: border-color 0.2s;
+  }
+  .lane-card.cooling { border-color: var(--gold-dark); }
+  .lane-card.ready {
+    border-color: var(--ready);
+    animation: readyPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes readyPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(0,229,255,0.08); }
+    50%       { box-shadow: 0 0 14px rgba(0,229,255,0.22); }
+  }
+
+  .lane-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lane-label {
+    font-size: 0.7rem;
+    color: #5A7087;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    width: 30px;
+    flex-shrink: 0;
+  }
+
+  .time-fields {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .t-input {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--gold-light);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    width: 42px;
+    text-align: center;
+    border-radius: 3px;
+    padding: 5px 2px;
+    outline: none;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  .t-input::-webkit-inner-spin-button,
+  .t-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .t-input:focus { border-color: var(--gold); }
+  .t-colon {
+    font-size: 1rem;
+    font-weight: 900;
+    color: #3A5068;
+    padding: 0 1px;
+  }
+
+  /* ── 입력 버튼: 남색 배경 + 흰 글씨로 가독성 개선 ── */
+  .confirm-btn {
+    background: linear-gradient(135deg, #1E4A7A, #163560);
+    border: 1px solid #4A7AB0;
+    color: #FFFFFF;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.15s;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .confirm-btn:hover {
+    border-color: #6AACF0;
+    background: linear-gradient(135deg, #2A5E9A, #1E4A7A);
+  }
+
+  .lane-result {
+    flex: 1;
+    text-align: right;
+    min-width: 0;
+  }
+  .result-main {
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #2A3A4A;
+  }
+  .result-main.cooling { color: var(--gold-light); }
+  .result-sub {
+    font-size: 0.62rem;
+    color: #3A5068;
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-sub.active { color: #785A28; }
+
+  .lane-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+
+  .rune-pills { display: flex; gap: 4px; }
+
+  /* ── 룬 필: 미선택시 어둡게, 선택시 남색 배경 + 밝은 글씨 ── */
+  .rune-pill {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: #4A6070;
+    font-size: 0.62rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 700;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .rune-pill:hover {
+    border-color: #4A7AB0;
+    color: #A0C8F0;
+    background: rgba(30,74,122,0.2);
+  }
+  .rune-pill.on {
+    background: linear-gradient(135deg, #1E4A7A, #163560);
+    border-color: #6AACF0;
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  .cancel-btn {
+    background: transparent;
+    border: 1px solid #2A1A1A;
+    color: #5A3030;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: all 0.15s;
+    display: none;
+  }
+  .cancel-btn:hover { border-color: var(--red); color: var(--red); }
+  .cancel-btn.visible { display: block; }
+
+  .progress-bar-wrap {
+    margin-top: 8px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+  }
+
+  .copy-section {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 10px;
+  }
+  .copy-preview {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 3px 3px 0 0;
+    padding: 8px 12px;
+    font-size: 0.76rem;
+    color: var(--gold-light);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    min-height: 34px;
+    line-height: 1.5;
+  }
+  .copy-preview.empty { color: #2A3A4A; font-style: italic; font-size: 0.7rem; }
+
+  /* ── 전체복사 버튼: 남색 배경 + 흰 글씨 ── */
+  .copy-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #1E4A7A, #163560);
+    border: 1px solid #4A7AB0;
+    border-top: none;
+    color: #FFFFFF;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    padding: 10px;
+    border-radius: 0 0 3px 3px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .copy-btn:hover {
+    background: linear-gradient(135deg, #2A5E9A, #1E4A7A);
+    border-color: #6AACF0;
+    color: #FFFFFF;
+  }
+  .copy-btn:disabled {
+    background: var(--panel2);
+    border-color: var(--border);
+    color: #2A3A4A;
+    cursor: not-allowed;
+    text-shadow: none;
+  }
+  .copy-btn.done {
+    background: linear-gradient(135deg, #1A4A2A, #0D2A1A);
+    border-color: var(--green);
+    color: var(--green);
+    text-shadow: none;
+  }
+
+  .reset-btn {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: #3A5068;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .reset-btn:hover { color: var(--white); border-color: #5A7087; }
+
+  .toast {
+    position: fixed;
+    bottom: 26px;
+    left: 50%;
+    transform: translateX(-50%) translateY(14px);
+    background: var(--green);
+    color: #010A13;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 8px 18px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: all 0.2s;
+    pointer-events: none;
+    z-index: 999;
+    letter-spacing: 0.06em;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Flash Cooldown Tracker</h1>
+  <p>점멸 쿨타임 트래커</p>
+</div>
+
+<div class="lanes-grid" id="lanesGrid"></div>
+
+<div class="copy-section">
+  <div class="copy-preview empty" id="copyPreview">점멸 시간을 입력하면 여기에 표시됩니다</div>
+  <button class="copy-btn" id="copyBtn" onclick="copyAll()" disabled>전체 복사</button>
+</div>
+<button class="reset-btn" onclick="resetAll()">초기화</button>
+
+<div class="toast" id="toast">클립보드에 복사됨</div>
+
+<script>
+const LANES = [
+  { id: 'top',    name: '탑',   short: 'top' },
+  { id: 'jungle', name: '정글', short: 'jug' },
+  { id: 'mid',    name: '미드', short: 'mid' },
+  { id: 'adc',    name: '원딜', short: 'ad'  },
+  { id: 'sup',    name: '서폿', short: 'sup' },
+];
+const CD = { base: 300, boots: 267, insight: 254, both: 230 };
+
+const state = {};
+LANES.forEach(l => {
+  state[l.id] = { boots: false, insight: false, usedAt: null, readyAt: null, status: 'idle' };
+});
+
+function getCd(id) {
+  const s = state[id];
+  if (s.boots && s.insight) return CD.both;
+  if (s.boots) return CD.boots;
+  if (s.insight) return CD.insight;
+  return CD.base;
+}
+
+function fmt(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function applyFlash(laneId) {
+  const m = parseInt(document.getElementById(`min-${laneId}`).value) || 0;
+  const s = Math.min(59, parseInt(document.getElementById(`sec-${laneId}`).value) || 0);
+  const usedAt = m * 60 + s;
+  const cd = getCd(laneId);
+  const ls = state[laneId];
+  ls.usedAt = usedAt;
+  ls.readyAt = usedAt + cd;
+  ls.status = 'cooling';
+  renderAll();
+}
+
+function cancelFlash(laneId) {
+  const ls = state[laneId];
+  ls.usedAt = null;
+  ls.readyAt = null;
+  ls.status = 'idle';
+  document.getElementById(`min-${laneId}`).value = '';
+  document.getElementById(`sec-${laneId}`).value = '';
+  renderAll();
+}
+
+function resetAll() {
+  LANES.forEach(l => {
+    state[l.id].boots = false;
+    state[l.id].insight = false;
+    state[l.id].usedAt = null;
+    state[l.id].readyAt = null;
+    state[l.id].status = 'idle';
+    document.getElementById(`min-${l.id}`).value = '';
+    document.getElementById(`sec-${l.id}`).value = '';
+    document.getElementById(`pill-${l.id}-boots`).classList.remove('on');
+    document.getElementById(`pill-${l.id}-insight`).classList.remove('on');
+  });
+  renderAll();
+}
+
+function toggleRune(laneId, rune) {
+  state[laneId][rune] = !state[laneId][rune];
+  document.getElementById(`pill-${laneId}-${rune}`).classList.toggle('on', state[laneId][rune]);
+  const ls = state[laneId];
+  if (ls.usedAt !== null) {
+    ls.readyAt = ls.usedAt + getCd(laneId);
+  }
+  renderAll();
+}
+
+function renderAll() {
+  LANES.forEach(l => renderLane(l));
+  renderCopy();
+}
+
+function renderLane(lane) {
+  const ls = state[lane.id];
+  const card       = document.getElementById(`card-${lane.id}`);
+  const resultMain = document.getElementById(`result-main-${lane.id}`);
+  const resultSub  = document.getElementById(`result-sub-${lane.id}`);
+  const bar        = document.getElementById(`bar-${lane.id}`);
+  const cancelBtn  = document.getElementById(`cancel-${lane.id}`);
+  const cd = getCd(lane.id);
+
+  card.className = 'lane-card' + (ls.status === 'idle' ? '' : ' ' + ls.status);
+
+  if (ls.status === 'idle') {
+    resultMain.className = 'result-main';
+    resultMain.textContent = '–';
+    resultSub.className = 'result-sub';
+    resultSub.textContent = `CD ${fmt(cd)}`;
+    bar.style.display = 'none';
+    cancelBtn.classList.remove('visible');
+  } else {
+    resultMain.className = 'result-main cooling';
+    resultMain.textContent = fmt(ls.readyAt) + ' 완료';
+    resultSub.className = 'result-sub active';
+    resultSub.textContent = `${fmt(ls.usedAt)} 사용 · CD ${fmt(cd)}`;
+    bar.style.display = 'block';
+    cancelBtn.classList.add('visible');
+  }
+}
+
+function renderCopy() {
+  const preview = document.getElementById('copyPreview');
+  const btn = document.getElementById('copyBtn');
+  const parts = LANES
+    .filter(l => state[l.id].status !== 'idle')
+    .map(l => `${l.short} ${fmt(state[l.id].readyAt)}`);
+  const text = parts.join(' ');
+  if (text) {
+    preview.textContent = text;
+    preview.classList.remove('empty');
+    btn.disabled = false;
+  } else {
+    preview.textContent = '점멸 시간을 입력하면 여기에 표시됩니다';
+    preview.classList.add('empty');
+    btn.disabled = true;
+  }
+}
+
+function copyAll() {
+  const parts = LANES
+    .filter(l => state[l.id].status !== 'idle')
+    .map(l => `${l.short} ${fmt(state[l.id].readyAt)}`);
+  navigator.clipboard.writeText(parts.join(' ')).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '복사 완료';
+    btn.classList.add('done');
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => {
+      btn.textContent = '전체 복사';
+      btn.classList.remove('done');
+      t.classList.remove('show');
+    }, 2000);
+  });
+}
+
+function buildLanes() {
+  const grid = document.getElementById('lanesGrid');
+  LANES.forEach(lane => {
+    const card = document.createElement('div');
+    card.className = 'lane-card';
+    card.id = `card-${lane.id}`;
+
+    card.innerHTML = `
+      <div class="lane-top">
+        <div class="lane-label">${lane.name}</div>
+        <div class="time-fields">
+          <input class="t-input" id="min-${lane.id}" type="number" min="0" max="99" placeholder="00">
+          <span class="t-colon">:</span>
+          <input class="t-input" id="sec-${lane.id}" type="number" min="0" max="59" placeholder="00">
+        </div>
+        <button class="confirm-btn" onclick="applyFlash('${lane.id}')">입력</button>
+        <div class="lane-result">
+          <div class="result-main" id="result-main-${lane.id}">–</div>
+          <div class="result-sub" id="result-sub-${lane.id}">CD ${fmt(CD.base)}</div>
+        </div>
+      </div>
+      <div class="lane-bottom">
+        <div class="rune-pills">
+          <button class="rune-pill" id="pill-${lane.id}-boots" onclick="toggleRune('${lane.id}','boots')">장화</button>
+          <button class="rune-pill" id="pill-${lane.id}-insight" onclick="toggleRune('${lane.id}','insight')">통찰</button>
+        </div>
+        <button class="cancel-btn" id="cancel-${lane.id}" onclick="cancelFlash('${lane.id}')">취소</button>
+      </div>
+      <div class="progress-bar-wrap" id="bar-${lane.id}">
+        <div class="progress-bar-fill"></div>
+      </div>
+    `;
+
+    grid.appendChild(card);
+
+    setTimeout(() => {
+      document.getElementById(`min-${lane.id}`).addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById(`sec-${lane.id}`).focus();
+      });
+      document.getElementById(`sec-${lane.id}`).addEventListener('keydown', e => {
+        if (e.key === 'Enter') applyFlash(lane.id);
+      });
+    }, 0);
+  });
+}
+
+buildLanes();
+renderAll();
+</script>
+
+</body>
+</html>
