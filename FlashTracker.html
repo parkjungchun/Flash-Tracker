@@ -219,18 +219,27 @@
     border: 1px solid #5A3030;
     color: #9A5050;
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 0.55rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    padding: 2px 6px;
+    padding: 4px 7px;
     border-radius: 3px;
     cursor: pointer;
     letter-spacing: 0.02em;
     transition: all 0.15s;
-    display: none;
     white-space: nowrap;
+    visibility: hidden;
+    width: 0;
+    padding: 0;
+    border: none;
+    overflow: hidden;
   }
   .cancel-btn:hover { border-color: var(--red); color: var(--red); }
-  .cancel-btn.visible { display: block; }
+  .cancel-btn.visible {
+    visibility: visible;
+    width: auto;
+    padding: 4px 7px;
+    border: 1px solid #5A3030;
+  }
 
   .progress-bar-wrap {
     margin-top: 6px;
@@ -446,19 +455,15 @@ function renderAll() {
 
 function renderLane(lane) {
   const ls = state[lane.id];
-  const card       = document.getElementById(`card-${lane.id}`);
-  const resultMain = document.getElementById(`result-main-${lane.id}`);
-  const resultSub  = document.getElementById(`result-sub-${lane.id}`);
-  const bar        = document.getElementById(`bar-${lane.id}`);
-  const cancelBtn  = document.getElementById(`cancel-${lane.id}`);
-  const cd = getCd(lane.id);
+  const card     = document.getElementById(`card-${lane.id}`);
+  const bar      = document.getElementById(`bar-${lane.id}`);
+  const cancelBtn = document.getElementById(`cancel-${lane.id}`);
 
-  // 실제 경과시간으로 남은 시간 계산 및 자동 초기화
+  // 실제 경과시간으로 자동 초기화
   if (ls.status === 'cooling' && ls.realStartAt !== null) {
     const elapsed = Math.floor((Date.now() - ls.realStartAt) / 1000);
     const remaining = ls.cdSec - elapsed;
     if (remaining <= 0) {
-      // 쿨타임 완료 → 자동 초기화
       ls.usedAt = null;
       ls.readyAt = null;
       ls.status = 'idle';
@@ -468,12 +473,7 @@ function renderLane(lane) {
       document.getElementById(`min-${lane.id}`).value = '';
       document.getElementById(`sec-${lane.id}`).value = '';
     } else {
-      // 진행 중: 남은 시간 & 프로그레스바 업데이트
       card.className = 'lane-card cooling';
-      resultMain.className = 'result-main cooling';
-      resultMain.textContent = fmt(remaining) + ' 남음';
-      resultSub.className = 'result-sub active';
-      resultSub.textContent = `${fmt(ls.usedAt)} 사용 · CD ${ls.cdSec}초`;
       bar.style.display = 'block';
       const pct = ((ls.cdSec - remaining) / ls.cdSec * 100).toFixed(1);
       bar.querySelector('.progress-bar-fill').style.width = pct + '%';
@@ -482,17 +482,10 @@ function renderLane(lane) {
     }
   }
 
-  card.className = 'lane-card' + (ls.status === 'idle' ? '' : ' ' + ls.status);
-
-  if (ls.status === 'idle') {
-    resultMain.className = 'result-main';
-    resultMain.textContent = '–';
-    resultSub.className = 'result-sub';
-    resultSub.textContent = `CD ${cd}초`;
-    bar.style.display = 'none';
-    bar.querySelector('.progress-bar-fill').style.width = '100%';
-    cancelBtn.classList.remove('visible');
-  }
+  card.className = 'lane-card';
+  bar.style.display = 'none';
+  bar.querySelector('.progress-bar-fill').style.width = '0%';
+  cancelBtn.classList.remove('visible');
 }
 
 function renderCopy() {
@@ -536,10 +529,7 @@ function buildLanes() {
           <input class="t-input" id="sec-${lane.id}" inputmode="numeric" placeholder="00" maxlength="2">
         </div>
         <button class="confirm-btn" onclick="applyFlash('${lane.id}')">입력</button>
-        <div class="lane-result">
-          <div class="result-main" id="result-main-${lane.id}">–</div>
-          <div class="result-sub" id="result-sub-${lane.id}">CD ${CD.base}초</div>
-        </div>
+        <button class="cancel-btn" id="cancel-${lane.id}" onclick="cancelFlash('${lane.id}')">취소</button>
       </div>
       <div class="lane-bottom">
         <div class="rune-pills">
@@ -547,7 +537,6 @@ function buildLanes() {
           ${lane.id === 'mid' ? `<button class="rune-pill" id="pill-${lane.id}-upgBoots" onclick="toggleRune('${lane.id}','upgBoots')">업글장화 ${CD.upgBoots}초</button>` : ''}
           <button class="rune-pill" id="pill-${lane.id}-utong" onclick="toggleRune('${lane.id}','utong')">우통 ${CD.utong}초</button>
         </div>
-        <button class="cancel-btn" id="cancel-${lane.id}" onclick="cancelFlash('${lane.id}')">취소</button>
       </div>
       <div class="progress-bar-wrap" id="bar-${lane.id}">
         <div class="progress-bar-fill"></div>
