@@ -45,42 +45,42 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 28px 12px 48px;
+    padding: 16px 8px 32px;
   }
 
   .header {
     text-align: center;
-    margin-bottom: 28px;
+    margin-bottom: 14px;
     width: 100%;
-    max-width: 560px;
+    max-width: 320px;
   }
   .header h1 {
-    font-size: 1.05rem;
+    font-size: 0.9rem;
     font-weight: 900;
     color: var(--gold);
     letter-spacing: 0.14em;
     text-transform: uppercase;
   }
   .header p {
-    font-size: 0.68rem;
+    font-size: 0.6rem;
     color: #6A8AA0;
-    margin-top: 3px;
+    margin-top: 2px;
     letter-spacing: 0.06em;
   }
 
   .lanes-grid {
     width: 100%;
-    max-width: 560px;
+    max-width: 320px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
   }
 
   .lane-card {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 3px;
-    padding: 11px 14px;
+    padding: 8px 10px;
     transition: border-color 0.2s;
   }
   .lane-card.cooling { border-color: var(--gold-dark); }
@@ -93,48 +93,47 @@
     50%       { box-shadow: 0 0 14px rgba(0,229,255,0.22); }
   }
 
+  /* 상단: 라벨 + 입력 + 버튼 한 줄 */
   .lane-top {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
   }
 
   .lane-label {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: #A0B8CC;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    width: 30px;
+    letter-spacing: 0.08em;
+    width: 22px;
     flex-shrink: 0;
   }
 
   .time-fields {
     display: flex;
     align-items: center;
-    gap: 1px;
+    gap: 0px;
   }
-  /* text input으로 변경 — 2자리 제한 */
   .t-input {
     background: var(--panel2);
     border: 1px solid var(--border);
     color: var(--gold-light);
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 1.0rem;
+    font-size: 0.85rem;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
-    width: 34px;
+    width: 26px;
     text-align: center;
     border-radius: 3px;
-    padding: 5px 2px;
+    padding: 4px 1px;
     outline: none;
     transition: border-color 0.15s;
   }
   .t-input:focus { border-color: var(--gold); }
   .t-colon {
-    font-size: 1rem;
+    font-size: 0.85rem;
     font-weight: 900;
     color: #7A9AB0;
-    padding: 0 2px;
+    padding: 0 1px;
   }
 
   .confirm-btn {
@@ -143,11 +142,11 @@
     color: #FFFFFF;
     font-family: 'Noto Sans KR', sans-serif;
     font-weight: 700;
-    font-size: 0.7rem;
-    padding: 6px 10px;
+    font-size: 0.62rem;
+    padding: 4px 7px;
     border-radius: 3px;
     cursor: pointer;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.02em;
     transition: all 0.15s;
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
@@ -157,23 +156,26 @@
     background: linear-gradient(135deg, #2A5E9A, #1E4A7A);
   }
 
+  /* 결과: 입력 버튼 오른쪽에 바로 표시 */
   .lane-result {
     flex: 1;
     text-align: right;
     min-width: 0;
   }
   .result-main {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: #5A7A8A;
+    white-space: nowrap;
   }
   .result-main.cooling { color: var(--gold-light); }
   .result-sub {
-    font-size: 0.62rem;
+    font-size: 0.55rem;
     color: #7A9AB0;
-    margin-top: 2px;
+    margin-top: 1px;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
   .result-sub.active { color: #A07840; }
 
@@ -181,23 +183,23 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
-  .rune-pills { display: flex; gap: 4px; }
+  .rune-pills { display: flex; gap: 3px; flex-wrap: wrap; }
 
   .rune-pill {
     background: transparent;
     border: 1px solid #3A5068;
     color: #7A9AB0;
-    font-size: 0.62rem;
-    padding: 3px 9px;
+    font-size: 0.55rem;
+    padding: 2px 6px;
     border-radius: 20px;
     cursor: pointer;
     font-family: 'Noto Sans KR', sans-serif;
     font-weight: 700;
     transition: all 0.15s;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
     white-space: nowrap;
   }
   .rune-pill:hover {
@@ -217,20 +219,21 @@
     border: 1px solid #5A3030;
     color: #9A5050;
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 0.62rem;
+    font-size: 0.55rem;
     font-weight: 700;
-    padding: 3px 8px;
+    padding: 2px 6px;
     border-radius: 3px;
     cursor: pointer;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
     transition: all 0.15s;
     display: none;
+    white-space: nowrap;
   }
   .cancel-btn:hover { border-color: var(--red); color: var(--red); }
   .cancel-btn.visible { display: block; }
 
   .progress-bar-wrap {
-    margin-top: 8px;
+    margin-top: 6px;
     height: 2px;
     background: var(--border);
     border-radius: 2px;
@@ -246,18 +249,18 @@
 
   .copy-section {
     width: 100%;
-    max-width: 560px;
-    margin-top: 10px;
+    max-width: 320px;
+    margin-top: 8px;
   }
   .copy-preview {
     background: var(--panel2);
     border: 1px solid var(--border);
     border-radius: 3px;
-    padding: 10px 14px;
-    font-size: 0.82rem;
+    padding: 8px 10px;
+    font-size: 0.72rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.05em;
     line-height: 1.6;
     user-select: all;
     cursor: text;
@@ -267,15 +270,15 @@
 
   .reset-btn {
     width: 100%;
-    max-width: 560px;
-    margin-top: 6px;
+    max-width: 320px;
+    margin-top: 5px;
     background: transparent;
     border: 1px solid #3A5068;
     color: #6A8AA0;
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 0.7rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    padding: 8px;
+    padding: 6px;
     border-radius: 3px;
     cursor: pointer;
     letter-spacing: 0.06em;
@@ -494,14 +497,17 @@ function renderLane(lane) {
 
 function renderCopy() {
   const preview = document.getElementById('copyPreview');
-  preview.innerHTML = LANES.map(l => {
-    const ls = state[l.id];
-    if (ls.status !== 'idle') {
-      return `<span class="slot-active">${l.short} ${fmt(ls.readyAt)}</span>`;
-    } else {
-      return `<span class="slot-dim">${l.short} --:--</span>`;
-    }
-  }).join(' ');
+  const active = LANES
+    .filter(l => state[l.id].status !== 'idle')
+    .sort((a, b) => state[a.id].readyAt - state[b.id].readyAt);
+
+  if (active.length === 0) {
+    preview.innerHTML = '<span class="slot-dim">—</span>';
+  } else {
+    preview.innerHTML = active.map(l =>
+      `<span class="slot-active">${l.short} ${fmt(state[l.id].readyAt)}</span>`
+    ).join(' ');
+  }
 }
 
 // 숫자만, 최대 2자리 입력 제한
