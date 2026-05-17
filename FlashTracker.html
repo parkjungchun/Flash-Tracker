@@ -277,6 +277,61 @@
   .slot-dim    { color: #4A6A80; }
   .slot-active { color: var(--gold-light); }
 
+  .apply-all-btn {
+    width: 100%;
+    max-width: 320px;
+    margin-top: 6px;
+    background: linear-gradient(135deg, #1E4A7A, #163560);
+    border: 1px solid #4A7AB0;
+    color: #FFFFFF;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 9px;
+    border-radius: 3px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .apply-all-btn:hover {
+    border-color: #6AACF0;
+    background: linear-gradient(135deg, #2A5E9A, #1E4A7A);
+  }
+
+  .clock-bar {
+    width: 100%;
+    max-width: 320px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+  .clock-left {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .clock-label {
+    font-size: 0.6rem;
+    color: #6A8AA0;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .game-clock {
+    font-size: 1.1rem;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+  .game-clock.running { color: var(--gold-light); }
+
   .reset-btn {
     width: 100%;
     max-width: 320px;
@@ -304,7 +359,24 @@
   <p>점멸 쿨타임 트래커</p>
 </div>
 
+<div class="clock-bar" id="clockBar">
+  <div class="clock-left">
+    <span class="clock-label">경과</span>
+    <div class="time-fields">
+      <input class="t-input" id="start-hr"  inputmode="numeric" placeholder="00" maxlength="2">
+      <span class="t-colon">:</span>
+      <input class="t-input" id="start-min" inputmode="numeric" placeholder="00" maxlength="2">
+      <span class="t-colon">:</span>
+      <input class="t-input" id="start-sec" inputmode="numeric" placeholder="00" maxlength="2">
+    </div>
+    <button class="confirm-btn" onclick="setGameStart()">시작</button>
+  </div>
+  <div class="game-clock" id="gameClock">--:--</div>
+</div>
+
 <div class="lanes-grid" id="lanesGrid"></div>
+
+<button class="apply-all-btn" onclick="applyAll()">입력</button>
 
 <div class="copy-section">
   <div class="copy-preview" id="copyPreview"></div>
@@ -319,23 +391,49 @@ const LANES = [
   { id: 'adc',    name: '원딜', short: 'ad'  },
   { id: 'sup',    name: '서폿', short: 'sup' },
 ];
-// 쿨타임 계산: 300*100/(100+주문가속합)
-// 장화:10, 업글장화:20, 우통:18
+
 const SA = { boots: 10, upgBoots: 20, utong: 18 };
 function calcCd(saTotal) { return Math.floor(300 * 100 / (100 + saTotal)); }
 const CD = {
   base:     300,
-  boots:    calcCd(SA.boots),                        // 272
-  upgBoots: calcCd(SA.upgBoots),                     // 250
-  utong:    calcCd(SA.utong),                        // 254
-  both:     calcCd(SA.boots + SA.utong),             // 234
-  upgBoth:  calcCd(SA.upgBoots + SA.utong),          // 217
+  boots:    calcCd(SA.boots),
+  upgBoots: calcCd(SA.upgBoots),
+  utong:    calcCd(SA.utong),
+  both:     calcCd(SA.boots + SA.utong),
+  upgBoth:  calcCd(SA.upgBoots + SA.utong),
 };
 
 const state = {};
 LANES.forEach(l => {
   state[l.id] = { boots: false, upgBoots: false, utong: false, usedAt: null, readyAt: null, status: 'idle', realStartAt: null, cdSec: 0 };
 });
+
+let gameStartRealMs = null;
+
+function getGameTimeSec() {
+  if (gameStartRealMs === null) return null;
+  return Math.floor((Date.now() - gameStartRealMs) / 1000);
+}
+
+function setGameStart() {
+  const h = parseInt(document.getElementById('start-hr').value) || 0;
+  const m = parseInt(document.getElementById('start-min').value) || 0;
+  const s = Math.min(59, parseInt(document.getElementById('start-sec').value) || 0);
+  const offsetSec = h * 3600 + m * 60 + s;
+  // 버튼 누른 시점 - 오프셋(ms) = 게임 시작 기준점
+  gameStartRealMs = Date.now() - offsetSec * 1000;
+  document.getElementById('gameClock').classList.add('running');
+}
+
+function updateGameClock() {
+  const sec = getGameTimeSec();
+  const el = document.getElementById('gameClock');
+  if (sec === null || sec < 0) {
+    el.textContent = '--:--';
+  } else {
+    el.textContent = fmt(sec);
+  }
+}
 
 function getCd(id) {
   const s = state[id];
@@ -355,7 +453,6 @@ function fmt(sec) {
   return `${m}:${s}`;
 }
 
-// 입력값을 초로 변환 (시:분:초)
 function getInputSec(laneId) {
   const hVal = parseInt(document.getElementById(`hr-${laneId}`).value) || 0;
   const mVal = parseInt(document.getElementById(`min-${laneId}`).value) || 0;
@@ -363,7 +460,15 @@ function getInputSec(laneId) {
   return hVal * 3600 + mVal * 60 + sVal;
 }
 
+function hasInput(laneId) {
+  const h = document.getElementById(`hr-${laneId}`).value;
+  const m = document.getElementById(`min-${laneId}`).value;
+  const s = document.getElementById(`sec-${laneId}`).value;
+  return h !== '' || m !== '' || s !== '';
+}
+
 function applyFlash(laneId) {
+  if (!hasInput(laneId)) return;
   const usedAt = getInputSec(laneId);
   const cd = getCd(laneId);
   const ls = state[laneId];
@@ -375,13 +480,14 @@ function applyFlash(laneId) {
   renderAll();
 }
 
+function applyAll() {
+  LANES.forEach(l => applyFlash(l.id));
+}
+
 function cancelFlash(laneId) {
   const ls = state[laneId];
-  ls.usedAt = null;
-  ls.readyAt = null;
-  ls.status = 'idle';
-  ls.realStartAt = null;
-  ls.cdSec = 0;
+  ls.usedAt = null; ls.readyAt = null; ls.status = 'idle';
+  ls.realStartAt = null; ls.cdSec = 0;
   document.getElementById(`hr-${laneId}`).value = '';
   document.getElementById(`min-${laneId}`).value = '';
   document.getElementById(`sec-${laneId}`).value = '';
@@ -389,6 +495,12 @@ function cancelFlash(laneId) {
 }
 
 function resetAll() {
+  gameStartRealMs = null;
+  document.getElementById('gameClock').textContent = '--:--';
+  document.getElementById('gameClock').classList.remove('running');
+  document.getElementById('start-hr').value = '';
+  document.getElementById('start-min').value = '';
+  document.getElementById('start-sec').value = '';
   LANES.forEach(l => {
     state[l.id].boots = false;
     state[l.id].upgBoots = false;
@@ -422,25 +534,17 @@ function toggleRune(laneId, rune) {
   }
   ls[rune] = !ls[rune];
   document.getElementById(`pill-${laneId}-${rune}`).classList.toggle('on', ls[rune]);
-  if (ls.usedAt !== null) {
-    ls.readyAt = ls.usedAt + getCd(laneId);
-  }
+  if (ls.usedAt !== null) ls.readyAt = ls.usedAt + getCd(laneId);
   updatePillLabels(laneId);
   renderAll();
 }
 
 function updatePillLabels(laneId) {
   const s = state[laneId];
-
-  const bootsCd   = s.utong ? CD.both    : CD.boots;
-  const utongCd   = s.upgBoots ? CD.upgBoth : (s.boots ? CD.both : CD.utong);
-
-  const bBtn = document.getElementById(`pill-${laneId}-boots`);
-  const iBtn = document.getElementById(`pill-${laneId}-utong`);
-
-  bBtn.textContent = s.boots ? `장화 ${bootsCd}초` : `장화 ${CD.boots}초`;
-  iBtn.textContent = s.utong ? `우통 ${utongCd}초` : `우통 ${CD.utong}초`;
-
+  const bootsCd = s.utong ? CD.both : CD.boots;
+  const utongCd = s.upgBoots ? CD.upgBoth : (s.boots ? CD.both : CD.utong);
+  document.getElementById(`pill-${laneId}-boots`).textContent = s.boots ? `장화 ${bootsCd}초` : `장화 ${CD.boots}초`;
+  document.getElementById(`pill-${laneId}-utong`).textContent = s.utong ? `우통 ${utongCd}초` : `우통 ${CD.utong}초`;
   const uBtn = document.getElementById(`pill-${laneId}-upgBoots`);
   if (uBtn) {
     const upgCd = s.utong ? CD.upgBoth : CD.upgBoots;
@@ -453,39 +557,49 @@ function renderAll() {
   renderCopy();
 }
 
+function clearLane(laneId) {
+  const ls = state[laneId];
+  ls.usedAt = null; ls.readyAt = null; ls.status = 'idle';
+  ls.realStartAt = null; ls.cdSec = 0;
+  document.getElementById(`hr-${laneId}`).value = '';
+  document.getElementById(`min-${laneId}`).value = '';
+  document.getElementById(`sec-${laneId}`).value = '';
+}
+
 function renderLane(lane) {
   const ls = state[lane.id];
-  const card     = document.getElementById(`card-${lane.id}`);
-  const bar      = document.getElementById(`bar-${lane.id}`);
+  const card      = document.getElementById(`card-${lane.id}`);
+  const bar       = document.getElementById(`bar-${lane.id}`);
   const cancelBtn = document.getElementById(`cancel-${lane.id}`);
 
-  // 실제 경과시간으로 자동 초기화
-  if (ls.status === 'cooling' && ls.realStartAt !== null) {
-    const elapsed = Math.floor((Date.now() - ls.realStartAt) / 1000);
-    const remaining = ls.cdSec - elapsed;
-    if (remaining <= 0) {
-      ls.usedAt = null;
-      ls.readyAt = null;
-      ls.status = 'idle';
-      ls.realStartAt = null;
-      ls.cdSec = 0;
-      document.getElementById(`hr-${lane.id}`).value = '';
-      document.getElementById(`min-${lane.id}`).value = '';
-      document.getElementById(`sec-${lane.id}`).value = '';
-    } else {
-      card.className = 'lane-card cooling';
-      bar.style.display = 'block';
-      const pct = ((ls.cdSec - remaining) / ls.cdSec * 100).toFixed(1);
-      bar.querySelector('.progress-bar-fill').style.width = pct + '%';
-      cancelBtn.classList.add('visible');
-      return;
+  if (ls.status === 'cooling') {
+    const gameSec = getGameTimeSec();
+    if (gameSec !== null && gameSec >= ls.readyAt) {
+      clearLane(lane.id);
+    } else if (gameSec === null) {
+      const elapsed = Math.floor((Date.now() - ls.realStartAt) / 1000);
+      if (elapsed >= ls.cdSec) clearLane(lane.id);
     }
   }
 
-  card.className = 'lane-card';
-  bar.style.display = 'none';
-  bar.querySelector('.progress-bar-fill').style.width = '0%';
-  cancelBtn.classList.remove('visible');
+  if (ls.status === 'cooling') {
+    card.className = 'lane-card cooling';
+    bar.style.display = 'block';
+    const gameSec = getGameTimeSec();
+    let pct = 0;
+    if (gameSec !== null && ls.usedAt !== null) {
+      pct = Math.min(100, (gameSec - ls.usedAt) / ls.cdSec * 100);
+    } else if (ls.realStartAt !== null) {
+      pct = Math.min(100, (Date.now() - ls.realStartAt) / 1000 / ls.cdSec * 100);
+    }
+    bar.querySelector('.progress-bar-fill').style.width = pct.toFixed(1) + '%';
+    cancelBtn.classList.add('visible');
+  } else {
+    card.className = 'lane-card';
+    bar.style.display = 'none';
+    bar.querySelector('.progress-bar-fill').style.width = '0%';
+    cancelBtn.classList.remove('visible');
+  }
 }
 
 function renderCopy() {
@@ -493,7 +607,6 @@ function renderCopy() {
   const active = LANES
     .filter(l => state[l.id].status !== 'idle')
     .sort((a, b) => state[a.id].readyAt - state[b.id].readyAt);
-
   if (active.length === 0) {
     preview.innerHTML = '<span class="slot-dim">—</span>';
   } else {
@@ -503,11 +616,10 @@ function renderCopy() {
   }
 }
 
-// 숫자만, 최대 2자리 입력 제한
 function limitInput(el, max) {
   el.addEventListener('input', () => {
     el.value = el.value.replace(/\D/g, '').slice(0, 2);
-    if (max !== null && parseInt(el.value) > max) el.value = String(max).padStart(2,'0');
+    if (max !== null && parseInt(el.value) > max) el.value = String(max).padStart(2, '0');
   });
 }
 
@@ -517,7 +629,6 @@ function buildLanes() {
     const card = document.createElement('div');
     card.className = 'lane-card';
     card.id = `card-${lane.id}`;
-
     card.innerHTML = `
       <div class="lane-top">
         <div class="lane-label">${lane.name}</div>
@@ -528,12 +639,11 @@ function buildLanes() {
           <span class="t-colon">:</span>
           <input class="t-input" id="sec-${lane.id}" inputmode="numeric" placeholder="00" maxlength="2">
         </div>
-        <button class="confirm-btn" onclick="applyFlash('${lane.id}')">입력</button>
         <button class="cancel-btn" id="cancel-${lane.id}" onclick="cancelFlash('${lane.id}')">취소</button>
       </div>
       <div class="lane-bottom">
         <div class="rune-pills">
-          <button class="rune-pill" id="pill-${lane.id}-boots"   onclick="toggleRune('${lane.id}','boots')">장화 ${CD.boots}초</button>
+          <button class="rune-pill" id="pill-${lane.id}-boots" onclick="toggleRune('${lane.id}','boots')">장화 ${CD.boots}초</button>
           ${lane.id === 'mid' ? `<button class="rune-pill" id="pill-${lane.id}-upgBoots" onclick="toggleRune('${lane.id}','upgBoots')">업글장화 ${CD.upgBoots}초</button>` : ''}
           <button class="rune-pill" id="pill-${lane.id}-utong" onclick="toggleRune('${lane.id}','utong')">우통 ${CD.utong}초</button>
         </div>
@@ -542,30 +652,19 @@ function buildLanes() {
         <div class="progress-bar-fill"></div>
       </div>
     `;
-
     grid.appendChild(card);
 
     setTimeout(() => {
       const hrEl  = document.getElementById(`hr-${lane.id}`);
       const minEl = document.getElementById(`min-${lane.id}`);
       const secEl = document.getElementById(`sec-${lane.id}`);
-
-      limitInput(hrEl,  99);
+      limitInput(hrEl, 99);
       limitInput(minEl, 59);
       limitInput(secEl, 59);
-
-      hrEl.addEventListener('keydown', e => {
-        if (e.key === 'Enter') minEl.focus();
-      });
-      minEl.addEventListener('keydown', e => {
-        if (e.key === 'Enter') secEl.focus();
-      });
-      secEl.addEventListener('keydown', e => {
-        if (e.key === 'Enter') applyFlash(lane.id);
-      });
-
-      // 2자리 입력 시 다음 칸으로 자동 이동
-      hrEl.addEventListener('input', () => { if (hrEl.value.length === 2) minEl.focus(); });
+      hrEl.addEventListener('keydown',  e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); minEl.focus(); } });
+      minEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); secEl.focus(); } });
+      secEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); applyAll(); } });
+      hrEl.addEventListener('input',  () => { if (hrEl.value.length  === 2) minEl.focus(); });
       minEl.addEventListener('input', () => { if (minEl.value.length === 2) secEl.focus(); });
     }, 0);
   });
@@ -574,8 +673,24 @@ function buildLanes() {
 buildLanes();
 renderAll();
 
-// 1초마다 카운트다운 갱신
-setInterval(() => { renderAll(); }, 1000);
+setTimeout(() => {
+  const sHr  = document.getElementById('start-hr');
+  const sMin = document.getElementById('start-min');
+  const sSec = document.getElementById('start-sec');
+  limitInput(sHr,  23);
+  limitInput(sMin, 59);
+  limitInput(sSec, 59);
+  sHr.addEventListener('input',  () => { if (sHr.value.length  === 2) sMin.focus(); });
+  sMin.addEventListener('input', () => { if (sMin.value.length === 2) sSec.focus(); });
+  sHr.addEventListener('keydown',  e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sMin.focus(); } });
+  sMin.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sSec.focus(); } });
+  sSec.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setGameStart(); } });
+}, 0);
+
+setInterval(() => {
+  updateGameClock();
+  renderAll();
+}, 1000);
 </script>
 
 </body>
